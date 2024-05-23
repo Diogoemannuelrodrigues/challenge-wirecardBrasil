@@ -1,0 +1,39 @@
+# Ignorar todos os arquivos .DS_Store
+.DS_Store
+**/.DS_Store
+
+# Ignorar pastas de configuração do IntelliJ IDEA
+.idea/
+**/.idea/
+
+# Ignorar a pasta wirecardBrasil.iml
+wirecardBrasil.iml
+
+# Ignorar arquivos de sistema operacional e temporários
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+*.swp
+*.swo
+
+# Ignorar logs
+*.log
+
+# Ignorar builds
+target/
+build/
+
+# Ignorar arquivos específicos de Maven
+*.mvn/
+!.mvn/wrapper/maven-wrapper.jar
+
+# Ignorar dependências baixadas pelo Maven
+**/target/
+
+# Ignorar arquivos de execução do Maven Wrapper
+mvnw
+mvnw.cmd
+
+# Ignorar arquivos de configuração do editor
+.vscode/
+.idea/
