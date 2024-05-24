@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -42,5 +43,10 @@ public class PaymentController {
     @GetMapping("/checkout/{id}")
     public ResponseEntity<PaymentRecordResponse> checkOut(@PathVariable UUID id) {
         return ResponseEntity.status(HttpStatus.OK).body(paymentService.checkout(id));
+    }
+
+    @GetMapping("/payments")
+    public ResponseEntity<List<PaymentRecordResponse>> payments() {
+        return ResponseEntity.status(HttpStatus.OK).body(paymentService.allPayments());
     }
 }

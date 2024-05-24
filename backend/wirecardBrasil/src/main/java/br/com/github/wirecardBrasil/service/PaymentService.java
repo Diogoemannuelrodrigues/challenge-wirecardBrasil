@@ -1,8 +1,11 @@
 package br.com.github.wirecardBrasil.service;
 
-import br.com.github.wirecardBrasil.entidade.*;
+import br.com.github.wirecardBrasil.entidade.Boleto;
+import br.com.github.wirecardBrasil.entidade.Buyer;
+import br.com.github.wirecardBrasil.entidade.CardCredit;
 import br.com.github.wirecardBrasil.entidade.Enum.EstadoPagamento;
 import br.com.github.wirecardBrasil.entidade.Enum.TypeEnum;
+import br.com.github.wirecardBrasil.entidade.Payment;
 import br.com.github.wirecardBrasil.entidade.record.BoletoPaymentResponse;
 import br.com.github.wirecardBrasil.entidade.record.PaymentRecordRequest;
 import br.com.github.wirecardBrasil.entidade.record.PaymentRecordResponse;
@@ -11,6 +14,8 @@ import br.com.github.wirecardBrasil.exceptions.PaymentNotFounException;
 import br.com.github.wirecardBrasil.exceptions.UpdateCardCreditException;
 import br.com.github.wirecardBrasil.mapper.GerarCartaoCredito;
 import br.com.github.wirecardBrasil.mapper.PaymentMapper;
+import br.com.github.wirecardBrasil.producer.EmailMessageProducer;
+import br.com.github.wirecardBrasil.producer.PaymentMessageProducer;
 import br.com.github.wirecardBrasil.repository.BoletoRepository;
 import br.com.github.wirecardBrasil.repository.CardCreditRepository;
 import br.com.github.wirecardBrasil.repository.ClientRepository;
@@ -22,6 +27,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -38,6 +44,8 @@ public class PaymentService {
     private final CardCreditRepository cardCreditRepository;
     private final BoletoRepository boletoRepository;
     private final ClientRepository clientRepository;
+    private final PaymentMessageProducer paymentMessageProducer;
+    private final EmailMessageProducer emailMessageProducer;
 
     @Transactional
     public BoletoPaymentResponse generateTicket(String dataVencimento, String valor, String nossoNumero, String valorTotal) {
@@ -47,7 +55,8 @@ public class PaymentService {
         boleto.setValor(BigDecimal.valueOf(Long.parseLong(valor)));
         boleto.setVencimento(LocalDate.parse(dataVencimento));
         boletoRepository.save(boleto);
-
+        paymentMessageProducer.sendMessage("Payment created: " + boleto);
+        emailMessageProducer.sendEmail("Send email:" + boleto);
         return BoletoPaymentResponse.builder().codigoDeBarra(boleto.getCodigoDeBarra()).valor(boleto.getValor()).vencimento(boleto.getVencimento()).build();
     }
 
@@ -83,6 +92,9 @@ public class PaymentService {
             updateCardCreditLimit(payment);
 
             var result = paymentRepository.save(payment);
+            paymentMessageProducer.sendMessage("Payment created: " + payment);
+            emailMessageProducer.sendEmail("Send email:" + payment.getBuyer().getEmail());
+
             return PaymentMapper.toPaymentRecordResponse(result);
         }
         throw new IllegalArgumentException("Type difent");
@@ -113,7 +125,7 @@ public class PaymentService {
                 throw new UpdateCardCreditException();
             }
             cardCredit.setLimit(newLimit);
-            //TODO - todo Adicionar rabbitMe que tem um novo limite para o cartao!
+            paymentMessageProducer.sendMessage("CardCredit update sucesses: " + cardCredit);
             cardCreditRepository.save(cardCredit);
         });
     }
@@ -122,7 +134,6 @@ public class PaymentService {
     public PaymentRecordResponse checkout(UUID id) {
         var payment = paymentRepository.findById(id).orElseThrow(PaymentNotFounException::new);
         payment.setEstadoPagamento(EstadoPagamento.PAGO);
-        //TODO - CHAMAR RABBIMQ
 
         var card = cardCreditRepository.findById(payment.getCardCredit().getId()).orElseThrow(IllegalArgumentException::new);
         BigDecimal newLimit = card.getLimit().add(payment.getAmount());
@@ -134,6 +145,16 @@ public class PaymentService {
                     log.info("Falha ao salvar o cartão: " + ex.getMessage());
                     return null;
                 });
+        paymentMessageProducer.sendMessage("CardCredit update sucesses: " + payment);
+        emailMessageProducer.sendEmail("Checkout with sucssess" + payment.getBuyer().getEmail());
+
         return PaymentMapper.toPaymentRecordResponse(payment);
+    }
+    public List<PaymentRecordResponse> allPayments() {
+        return paymentRepository
+                .findAll()
+                .stream()
+                .map(PaymentMapper::toPaymentRecordResponse)
+                .toList();
     }
 }
