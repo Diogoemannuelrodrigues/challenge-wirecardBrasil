@@ -13,6 +13,7 @@ public class RabbitMQConfig {
     public static final String QUEUE_NAME = "paymentQueue";
     public static final String EMAIL_QUEUE_NAME = "emailQueue";
     public static final String EXCHANGE_NAME = "paymentExchange";
+    public static final String CARD_NAME = "cardCreditQueue";
 
     @Bean
     public Queue paymentQueue() {
@@ -22,6 +23,11 @@ public class RabbitMQConfig {
     @Bean
     public Queue emailQueue() {
         return new Queue(EMAIL_QUEUE_NAME, true);
+    }
+
+    @Bean
+    public Queue cardCreditQueue() {
+        return new Queue(CARD_NAME, true);
     }
 
     @Bean
@@ -37,6 +43,11 @@ public class RabbitMQConfig {
     @Bean
     public Binding emailBinding(Queue emailQueue, TopicExchange exchange) {
         return BindingBuilder.bind(emailQueue).to(exchange).with("wirecardbrasil.email.#");
+    }
+
+    @Bean
+    public Binding cardCreditBinding(Queue emailQueue, TopicExchange exchange) {
+        return BindingBuilder.bind(emailQueue).to(exchange).with("wirecardbrasil.cardCredit.#");
     }
 }
 

@@ -14,6 +14,7 @@ import br.com.github.wirecardBrasil.exceptions.PaymentNotFounException;
 import br.com.github.wirecardBrasil.exceptions.UpdateCardCreditException;
 import br.com.github.wirecardBrasil.mapper.GerarCartaoCredito;
 import br.com.github.wirecardBrasil.mapper.PaymentMapper;
+import br.com.github.wirecardBrasil.producer.CardCreditMensageProducer;
 import br.com.github.wirecardBrasil.producer.EmailMessageProducer;
 import br.com.github.wirecardBrasil.producer.PaymentMessageProducer;
 import br.com.github.wirecardBrasil.repository.BoletoRepository;
@@ -46,6 +47,7 @@ public class PaymentService {
     private final ClientRepository clientRepository;
     private final PaymentMessageProducer paymentMessageProducer;
     private final EmailMessageProducer emailMessageProducer;
+    private final CardCreditMensageProducer cardCreditMensageProducer;
 
     @Transactional
     public BoletoPaymentResponse generateTicket(String dataVencimento, String valor, String nossoNumero, String valorTotal) {
@@ -112,7 +114,7 @@ public class PaymentService {
                 .dataExpiracao(String.valueOf(GerarCartaoCredito.generateRandomFutureDate()))
                 .limit(limit)
                 .build();
-
+        cardCreditMensageProducer.sendMensage("Card generetad with sucssess"+ cardCredit);
         return cardCreditRepository.save(cardCredit);
     }
 
@@ -126,6 +128,7 @@ public class PaymentService {
             }
             cardCredit.setLimit(newLimit);
             paymentMessageProducer.sendMessage("CardCredit update sucesses: " + cardCredit);
+            cardCreditMensageProducer.sendMensage("Card generetad with sucssess"+ cardCredit);
             cardCreditRepository.save(cardCredit);
         });
     }
