@@ -21,6 +21,7 @@ import br.com.github.wirecardBrasil.repository.BoletoRepository;
 import br.com.github.wirecardBrasil.repository.CardCreditRepository;
 import br.com.github.wirecardBrasil.repository.ClientRepository;
 import br.com.github.wirecardBrasil.repository.PaymentRepository;
+import br.com.github.wirecardBrasil.service.clients.ValidateCardCreditClient;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -48,6 +49,7 @@ public class PaymentService {
     private final PaymentMessageProducer paymentMessageProducer;
     private final EmailMessageProducer emailMessageProducer;
     private final CardCreditMensageProducer cardCreditMensageProducer;
+    private final ValidateCardCreditClient validateCardCredit;
 
     @Transactional
     public BoletoPaymentResponse generateTicket(String dataVencimento, String valor, String nossoNumero, String valorTotal) {
@@ -114,8 +116,14 @@ public class PaymentService {
                 .dataExpiracao(String.valueOf(GerarCartaoCredito.generateRandomFutureDate()))
                 .limit(limit)
                 .build();
-        cardCreditMensageProducer.sendMensage("Card generetad with sucssess"+ cardCredit);
-        return cardCreditRepository.save(cardCredit);
+
+        var result = validateCardCredit.validate(cardCredit);
+
+        if(!result.isEmpty()) {
+            cardCreditMensageProducer.sendMensage("Card generetad and valited with sucssess" + cardCredit);
+            return cardCreditRepository.save(cardCredit);
+        }
+        throw new IllegalArgumentException();
     }
 
     private void updateCardCreditLimit(Payment request) {
