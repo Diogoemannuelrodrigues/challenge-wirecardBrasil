@@ -1,6 +1,8 @@
 package com.github.wirecard.entidade;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.github.wirecard.entidade.Enum.CardBrandEnum;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -10,6 +12,7 @@ import org.hibernate.annotations.GenericGenerator;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
@@ -32,20 +35,24 @@ public class CardCredit {
 
     private String number;
 
-    private String expirationDate;
+    private LocalDate expirationDate;
+
+    private LocalDate createdAt;
 
     private String cvv;
+
+    @Enumerated(EnumType.STRING)
+    private CardBrandEnum cardBrand;
 
     @Column(name = "credit_limit")
     private BigDecimal limit;
 
     @ManyToOne
     @JoinColumn(name = "client_id", nullable = false)
+    @JsonBackReference
     private Client client;
 
-    @OneToMany(mappedBy = "cardCredit", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private Set<Account> accounts;
+    @ManyToMany(mappedBy = "cardCredits")
+    private Set<Account> accounts = new HashSet<>();
 
-    public CardCredit(String name, String s, LocalDate localDate, String s1, BigDecimal bigDecimal) {
-    }
 }

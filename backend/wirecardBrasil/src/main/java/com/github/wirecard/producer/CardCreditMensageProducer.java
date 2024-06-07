@@ -15,7 +15,7 @@ public class CardCreditMensageProducer {
     private final RabbitTemplate rabbitTemplate;
 
     public void sendMensage(String cardCreditmensage) {
-        rabbitTemplate.convertAndSend(RabbitMQConfig.CARD_NAME, "wirecardbrasil.cardCredit", cardCreditmensage);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, "wirecardbrasil.cardCredit", cardCreditmensage);
         log.info("Sent email message: {}", cardCreditmensage);
     }
 }

@@ -31,9 +31,13 @@ public class Account {
     @OneToMany(mappedBy = "account", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<CardExtract> cardExtracts = new HashSet<>();
 
-    @ManyToOne
-    @JoinColumn(name = "card_credit_id", nullable = false)
-    private CardCredit cardCredit;
+    @ManyToMany
+    @JoinTable(
+            name = "account_card_credit",
+            joinColumns = @JoinColumn(name = "account_id"),
+            inverseJoinColumns = @JoinColumn(name = "card_credit_id")
+    )
+    private Set<CardCredit> cardCredits = new HashSet<>();
 
     public Account() {
             this.transactions = new HashSet<>();

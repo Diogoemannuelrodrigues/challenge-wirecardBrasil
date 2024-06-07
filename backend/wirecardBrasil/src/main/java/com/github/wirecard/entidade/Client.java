@@ -1,6 +1,8 @@
 package com.github.wirecard.entidade;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -37,6 +39,9 @@ public class Client {
     private BigDecimal salary;
 
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonManagedReference
     private Set<CardCredit> cardCredits = new HashSet<>();
 
+    public Client(String name, String cpf, Integer age, BigDecimal salary, Set<CardCredit> cardCredits) {
+    }
 }

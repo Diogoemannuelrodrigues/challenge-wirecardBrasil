@@ -2,19 +2,25 @@ package com.github.wirecard.service;
 
 import com.github.wirecard.entidade.CardCredit;
 import com.github.wirecard.entidade.Client;
+import com.github.wirecard.entidade.Enum.CardBrandEnum;
+import com.github.wirecard.entidade.record.CardCreditRequest;
+import com.github.wirecard.entidade.record.CardCreditResponse;
+import com.github.wirecard.entidade.record.ClientResponse;
 import com.github.wirecard.exceptions.ErrorCardException;
 import com.github.wirecard.exceptions.UpdateCardCreditException;
 import com.github.wirecard.producer.CardCreditMensageProducer;
 import com.github.wirecard.repository.CardCreditRepository;
+import com.github.wirecard.repository.ClientRepository;
 import com.github.wirecard.service.clients.ValidateCardCreditClient;
-import com.github.wirecard.mapper.GerarCartaoCredito;
+import com.github.wirecard.config.GerarCartaoCredito;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.util.Optional;
-import java.util.Random;
-import java.util.UUID;
+import java.time.LocalDate;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -23,24 +29,48 @@ public class CardCreditService {
     private final CardCreditRepository cardCreditRepository;
     private final ValidateCardCreditClient validateCardCredit;
     private final CardCreditMensageProducer cardCreditMensageProducer;
+    private final ClientRepository clientRepository;
 
+    @Transactional
+    public CardCreditResponse genereteCardCerdit(CardCreditRequest creditRequest){
 
-    public CardCredit genereteCardCerdit(Client client){
-        var cardCredit = CardCredit.builder()
-                .holderName(client.getName())
-                .number(GerarCartaoCredito.generateCreditCardNumber())
-                .cvv(GerarCartaoCredito.geraNumeroCvv())
-                .expirationDate(String.valueOf(GerarCartaoCredito.generateRandomFutureDate()))
-                .limit(calculateCreditLimit(client))
-                .build();
+            var client = clientRepository.findById(creditRequest.clientId()).orElseThrow(IllegalArgumentException::new);
+            var clientResponse = ClientResponse.fromEntity(client);
+            var clientResponses = ClientResponse.toEntity(clientResponse);
 
-        var result = validateCardCredit.validate(cardCredit);
+            var cardCredit = CardCredit.builder()
+                    .holderName(creditRequest.clientName())
+                    .number(GerarCartaoCredito.generateCreditCardNumber())
+                    .cvv(GerarCartaoCredito.geraNumeroCvv())
+                    .expirationDate((GerarCartaoCredito.generateRandomFutureDate()))
+                    .limit(calculateCreditLimit(clientResponses))
+                    .build();
 
-        if(!result.isEmpty()) {
-            cardCreditMensageProducer.sendMensage("Card generetad and valited with sucssess" + cardCredit);
-            return cardCreditRepository.save(cardCredit);
+            var result = validateCardCredit.validate(cardCredit);
+
+            cardCredit.setCardBrand(validateCardBrand(cardCredit));
+            cardCredit.setCreatedAt(LocalDate.now());
+            cardCredit.setClient(client);
+            if(!result.isEmpty()) {
+                var card = cardCreditRepository.save(cardCredit);
+                cardCreditMensageProducer.sendMensage("CardCredir create with success " + cardCredit);
+                return CardCreditResponse.toEntityResponse(card);
         }
+
         throw new ErrorCardException();
+    }
+
+    private CardBrandEnum validateCardBrand(CardCredit cardCredit) {
+
+        var number = cardCredit.getNumber().charAt(0);
+
+        return switch (number){
+            case 4 -> CardBrandEnum.VISA;
+            case 3 -> CardBrandEnum.AMEX;
+            case 6 -> CardBrandEnum.DISCOVER;
+            default -> CardBrandEnum.MASTERCARD;
+        };
+
     }
 
     public void updateCardCreditLimit(UUID idCardCredit, BigDecimal request) {
@@ -80,10 +110,10 @@ public class CardCreditService {
         // Calcular o score para cada critério
         double creditScoreRating = creditScore * CREDIT_SCORE_WEIGHT;
         double incomeRating = monthlyIncome.doubleValue() * INCOME_WEIGHT;
-        double jobStabilityRating = (monthsInJob / 12.0) * JOB_STABILITY_WEIGHT; // anos no emprego
+        double jobStabilityRating = (monthsInJob / 12.0) * JOB_STABILITY_WEIGHT;
         double paymentHistoryRating = (latePayments == 0 ? 1 : 0) * PAYMENT_HISTORY_WEIGHT;
         double debtLevelRating = (totalDebt.compareTo(BigDecimal.ZERO) == 0 ? 1 : 0) * DEBT_LEVEL_WEIGHT;
-        double customerLoyaltyRating = (monthsAsCustomer / 12.0) * CUSTOMER_LOYALTY_WEIGHT; // anos como cliente
+        double customerLoyaltyRating = (monthsAsCustomer / 12.0) * CUSTOMER_LOYALTY_WEIGHT;
 
         double totalScore = creditScoreRating + incomeRating + jobStabilityRating + paymentHistoryRating + debtLevelRating + customerLoyaltyRating;
 
@@ -117,6 +147,26 @@ public class CardCreditService {
             cardCredit.setLimit(amount);
             return cardCreditRepository.save(cardCredit);
         }).orElseThrow(ErrorCardException::new);
+    }
+
+    public void destroyCardCredit(UUID id) {
+        var card = cardCreditRepository.findById(id).orElseThrow(IllegalArgumentException::new);
+        cardCreditRepository.delete(card);
+    }
+
+    public CardCreditResponse findCardCredit(UUID id) {
+        return cardCreditRepository
+                .findById(id)
+                .map(CardCreditResponse::toEntityResponse)
+                .orElseThrow(IllegalArgumentException::new);
+    }
+
+    public List<CardCreditResponse> allCards() {
+       return cardCreditRepository
+               .findAll()
+               .stream()
+               .map(CardCreditResponse::toEntityResponse)
+               .collect(Collectors.toList());
     }
 
     //todo - metodo para gerar o qrcode
