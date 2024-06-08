@@ -17,5 +17,6 @@ public class CardCreditMensageProducer {
     public void sendMensage(String cardCreditmensage) {
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_NAME, "wirecardbrasil.cardCredit", cardCreditmensage);
         log.info("Sent email message: {}", cardCreditmensage);
+        //todo - criar a parte de enviar um email valido!
     }
 }

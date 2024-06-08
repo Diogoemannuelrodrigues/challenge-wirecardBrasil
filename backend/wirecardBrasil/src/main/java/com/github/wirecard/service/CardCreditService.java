@@ -65,10 +65,11 @@ public class CardCreditService {
         var number = cardCredit.getNumber().charAt(0);
 
         return switch (number){
-            case 4 -> CardBrandEnum.VISA;
-            case 3 -> CardBrandEnum.AMEX;
-            case 6 -> CardBrandEnum.DISCOVER;
-            default -> CardBrandEnum.MASTERCARD;
+            case '4' -> CardBrandEnum.VISA;
+            case '3' -> CardBrandEnum.AMEX;
+            case '6' -> CardBrandEnum.DISCOVER;
+            case '5' -> CardBrandEnum.MASTERCARD;
+            default -> CardBrandEnum.UNKNOWN;
         };
 
     }
